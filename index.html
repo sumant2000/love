@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Valentines!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background-color: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Georgia', serif;
+            color: #e74c3c;
+            overflow: hidden;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+        }
+        
+        canvas {
+            border: none;
+        }
+        
+        .equation {
+            margin-top: 20px;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+        
+        .equation .formula {
+            font-style: italic;
+        }
+        
+        .k-value {
+            margin-top: 10px;
+            font-size: 1.3rem;
+            color: #e74c3c;
+        }
+        
+        .controls {
+            margin-top: 20px;
+        }
+        
+        button {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px 30px;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 25px;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            background-color: #c0392b;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <h1>Happy Valentines!</h1>
+    <canvas id="heartCanvas" width="600" height="500"></canvas>
+    <div class="equation">
+        <span class="formula">y = x<sup>2/3</sup> + 0.9 sin(kx)√(3 - x²)</span>
+    </div>
+    <div class="k-value">k = <span id="kDisplay">0.00</span></div>
+    <div class="controls">
+        <button id="restartBtn">Restart Animation</button>
+        <button id="pauseBtn">Pause</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('heartCanvas');
+        const ctx = canvas.getContext('2d');
+        const kDisplay = document.getElementById('kDisplay');
+        const restartBtn = document.getElementById('restartBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+
+        const width = canvas.width;
+        const height = canvas.height;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const scale = 100;
+
+        let k = 0;
+        const maxK = 93.89;
+        let animationId;
+        let isPaused = false;
+
+        // Heart curve function: y = x^(2/3) + 0.9 * sin(kx) * sqrt(3 - x^2)
+        function heartY(x, k) {
+            const term1 = Math.pow(Math.abs(x), 2/3) * Math.sign(x);
+            const sqrtTerm = Math.sqrt(3 - x * x);
+            const term2 = 0.9 * Math.sin(k * x) * sqrtTerm;
+            return term1 + term2;
+        }
+
+        function drawAxes() {
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            
+            // X-axis
+            ctx.beginPath();
+            ctx.moveTo(50, centerY);
+            ctx.lineTo(width - 30, centerY);
+            ctx.stroke();
+            
+            // X-axis arrow
+            ctx.beginPath();
+            ctx.moveTo(width - 30, centerY);
+            ctx.lineTo(width - 40, centerY - 5);
+            ctx.lineTo(width - 40, centerY + 5);
+            ctx.closePath();
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            
+            // Y-axis
+            ctx.beginPath();
+            ctx.moveTo(centerX, height - 30);
+            ctx.lineTo(centerX, 30);
+            ctx.stroke();
+            
+            // Y-axis arrow
+            ctx.beginPath();
+            ctx.moveTo(centerX, 30);
+            ctx.lineTo(centerX - 5, 40);
+            ctx.lineTo(centerX + 5, 40);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Axis labels
+            ctx.fillStyle = '#fff';
+            ctx.font = '14px Georgia';
+            ctx.fillText('-2', centerX - 2 * scale - 5, centerY + 20);
+            ctx.fillText('2', centerX + 2 * scale - 5, centerY + 20);
+            ctx.fillText('2', centerX + 10, centerY - 2 * scale + 5);
+            ctx.fillText('-1', centerX + 10, centerY + scale + 5);
+        }
+
+        function drawHeart(currentK) {
+            ctx.clearRect(0, 0, width, height);
+            drawAxes();
+            
+            // Draw the heart using vertical lines (similar to the image)
+            const numLines = 150;
+            const xMin = -Math.sqrt(3);
+            const xMax = Math.sqrt(3);
+            const step = (xMax - xMin) / numLines;
+            
+            ctx.lineWidth = 2;
+            
+            for (let i = 0; i <= numLines; i++) {
+                const x = xMin + i * step;
+                
+                if (Math.abs(x) > Math.sqrt(3)) continue;
+                
+                // Calculate y values for upper and lower parts
+                const term1 = Math.pow(Math.abs(x), 2/3);
+                const sqrtTerm = Math.sqrt(3 - x * x);
+                const sinTerm = 0.9 * Math.sin(currentK * x) * sqrtTerm;
+                
+                const yUpper = term1 + sinTerm;
+                const yLower = term1 - sqrtTerm; // Lower bound of the heart
+                
+                // Convert to canvas coordinates
+                const canvasX = centerX + x * scale;
+                const canvasYUpper = centerY - yUpper * scale;
+                const canvasYLower = centerY - yLower * scale;
+                
+                // Create gradient for each line
+                const gradient = ctx.createLinearGradient(canvasX, canvasYUpper, canvasX, canvasYLower);
+                gradient.addColorStop(0, '#ff4444');
+                gradient.addColorStop(0.5, '#cc2222');
+                gradient.addColorStop(1, '#991111');
+                
+                ctx.strokeStyle = gradient;
+                ctx.beginPath();
+                ctx.moveTo(canvasX, canvasYUpper);
+                ctx.lineTo(canvasX, canvasYLower);
+                ctx.stroke();
+            }
+            
+            // Also draw the smooth curve outline
+            ctx.strokeStyle = '#ff6666';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            
+            // Upper curve
+            let firstPoint = true;
+            for (let x = -Math.sqrt(3); x <= Math.sqrt(3); x += 0.01) {
+                const y = heartY(x, currentK);
+                const canvasX = centerX + x * scale;
+                const canvasY = centerY - y * scale;
+                
+                if (firstPoint) {
+                    ctx.moveTo(canvasX, canvasY);
+                    firstPoint = false;
+                } else {
+                    ctx.lineTo(canvasX, canvasY);
+                }
+            }
+            ctx.stroke();
+            
+            // Lower curve (the bottom part of the heart)
+            ctx.beginPath();
+            firstPoint = true;
+            for (let x = -Math.sqrt(3); x <= Math.sqrt(3); x += 0.01) {
+                const term1 = Math.pow(Math.abs(x), 2/3);
+                const sqrtTerm = Math.sqrt(3 - x * x);
+                const y = term1 - sqrtTerm;
+                const canvasX = centerX + x * scale;
+                const canvasY = centerY - y * scale;
+                
+                if (firstPoint) {
+                    ctx.moveTo(canvasX, canvasY);
+                    firstPoint = false;
+                } else {
+                    ctx.lineTo(canvasX, canvasY);
+                }
+            }
+            ctx.stroke();
+        }
+
+        function animate() {
+            if (isPaused) {
+                animationId = requestAnimationFrame(animate);
+                return;
+            }
+            
+            drawHeart(k);
+            kDisplay.textContent = k.toFixed(2);
+            
+            if (k < maxK) {
+                k += 0.5;
+                if (k > maxK) k = maxK;
+            }
+            
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function restart() {
+            k = 0;
+            isPaused = false;
+            pauseBtn.textContent = 'Pause';
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
+        }
+
+        restartBtn.addEventListener('click', restart);
+        pauseBtn.addEventListener('click', togglePause);
+
+        // Start animation
+        animate();
+    </script>
+</body>
+</html>
